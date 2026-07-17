@@ -94,7 +94,7 @@ By completing this roadmap, you will have built:
 | Package structure (`__init__.py`, relative imports) | Intermediate | [Python Packaging Guide](https://packaging.python.org/en/latest/) |
 | Virtual environments (`venv`, `uv`) | Beginner | [uv Documentation](https://docs.astral.sh/uv/) |
 
-### AI and LLM Concepts (Required)
+### AI and LLM Concepts (Required) 
 
 | Concept | Level | Learning Resource |
 |---------|-------|-------------------|
