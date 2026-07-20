@@ -30,7 +30,7 @@ def _build_llm(
     provider: str,
     temperature: float = 0,
     streaming: bool = False,
-    max_tokens: Optional[int] = None,
+    max_tokens: Optional[int] = None, 
     **kwargs: Any,
 ) -> ChatOpenAI:
     """Internal factory — builds a ChatOpenAI for any provider."""

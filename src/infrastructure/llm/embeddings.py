@@ -25,7 +25,7 @@ from infrastructure.config import EMBEDDING_MODEL, PROVIDER, OPENROUTER_BASE_URL
 
 
 # ── OpenAI (default) ────────────────────────────────────────────────
-
+   
 def get_default_embeddings(
     batch_size: int = 100,
     show_progress: bool = False,

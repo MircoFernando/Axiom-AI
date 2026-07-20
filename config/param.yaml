@@ -115,7 +115,7 @@ paths:
   data_dir: data
   kb_dir: data/knowledge_base
   # Markdown & JSONL dirs are fallback ingestion sources (pipeline.py)
-  markdown_dir: data/nawaloka_markdown
+  markdown_dir: data/markdown
   logs_dir: logs
 
 # ============================================================================
@@ -138,7 +138,7 @@ observability:
 # ============================================================================
 qdrant:
   # Collection name for RAG chunks
-  collection_name: nawaloka
+  collection_name: Axiom-AI
   # Note: QDRANT_API_KEY and QDRANT_URL must be set in .env file
 
 # ============================================================================
