@@ -9,7 +9,6 @@ pipeline steps.
 
 import json
 from loguru import logger
-import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List
@@ -20,6 +19,7 @@ from infrastructure.config import (
     KB_DIR,
     QDRANT_COLLECTION_NAME,
     EMBEDDING_BATCH_SIZE,
+    DEFAULT_TENANT_ID,
 )
 from infrastructure.llm import get_default_embeddings
 from infrastructure.db.qdrant_client import (
@@ -28,7 +28,7 @@ from infrastructure.db.qdrant_client import (
     upsert_chunks,
     collection_info,
 )
-from services.ingest_service import (
+from .chunkers import (
     semantic_chunk,
     fixed_chunk,
     sliding_chunk,
@@ -65,7 +65,7 @@ def load_kb_docs(kb_dir: Path | None = None) -> List[Dict[str, Any]]:
 
         title = content.split("\n", 1)[0].lstrip("# ").strip() or md_file.stem
         doc_slug = md_file.stem.lstrip("0123456789_")
-        url = f"internal://nawaloka/{doc_slug}"
+        url = f"internal://axiom/{doc_slug}"
         docs.append({"url": url, "title": title, "content": content})
 
     logger.info("Loaded {} knowledge-base documents from {}", len(docs), kb_dir)
@@ -85,7 +85,7 @@ def load_markdown_docs(md_dir: Path | None = None) -> List[Dict[str, Any]]:
             continue
 
         title = content.split("\n", 1)[0].lstrip("# ").strip() or md_file.stem
-        url = f"https://nawaloka.com/{md_file.stem}"
+        url = f"internal://axiom/crawl/{md_file.stem}"
         docs.append({"url": url, "title": title, "content": content})
 
     logger.info("Loaded {} markdown documents from {}", len(docs), md_dir)
@@ -181,10 +181,21 @@ def _enrich_children_with_parent_text(
 # =====================================================================
 
 
+def _tag_chunks_with_tenant(
+    chunks: List[Dict[str, Any]],
+    tenant_id: str,
+) -> List[Dict[str, Any]]:
+    """Attach tenant_id to every chunk before upsert."""
+    for chunk in chunks:
+        chunk["tenant_id"] = tenant_id
+    return chunks
+
+
 def run_ingest(
     source: str = "kb",
     strategy: str = "parent_child",
     recreate: bool = False,
+    tenant_id: str = DEFAULT_TENANT_ID,
 ) -> int:
     """
     End-to-end ingestion pipeline.
@@ -193,6 +204,7 @@ def run_ingest(
         source: One of ``kb``, ``markdown``, ``jsonl``.
         strategy: One of ``semantic``, ``fixed``, ``sliding``, ``parent_child``.
         recreate: If ``True``, drop and recreate the Qdrant collection first.
+        tenant_id: Tenant scope for every upserted point (multi-tenant RAG).
 
     Returns:
         Number of points upserted.
@@ -215,8 +227,7 @@ def run_ingest(
     logger.info(f"\n📂 Loading documents (source={source})...")
     docs = loader()
     if not docs:
-        logger.error("❌ No documents loaded. Nothing to ingest.")
-        sys.exit(1)
+        raise ValueError(f"No documents loaded from source={source!r}")
 
     # ── 2. Chunk ─────────────────────────────────────────────
     logger.info(f"\n✂️  Chunking (strategy={strategy})...")
@@ -237,8 +248,10 @@ def run_ingest(
         logger.info(f"   → {len(chunks)} chunks created")
 
     if not chunks:
-        logger.error("❌ No chunks produced. Check your documents.")
-        sys.exit(1)
+        raise ValueError("No chunks produced — check document content and chunking strategy")
+
+    chunks = _tag_chunks_with_tenant(chunks, tenant_id)
+    logger.info("   → Tagged {} chunks with tenant_id={}", len(chunks), tenant_id)
 
     # ── 3. Embed ─────────────────────────────────────────────
     logger.info(f"\n🔢 Embedding {len(chunks)} chunks...")

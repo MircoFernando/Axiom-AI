@@ -32,8 +32,6 @@ from infrastructure.config import (
     LATE_CHUNK_SPLIT_SIZE,
     LATE_CHUNK_CONTEXT_WINDOW
 )
-from infrastructure.models import Document, Chunk
-
 
 # ============================================================================
 # Utility Functions
@@ -348,7 +346,8 @@ def parent_child_chunk(documents: List[Dict[str, Any]]) -> Tuple[List[Dict[str, 
                         "url": url,
                         "title": title,
                         "text": child_text.strip(),
-                        "strategy": "child",
+                        "strategy": "parent_child",
+                        "chunk_role": "child",
                         "chunk_index": child_idx,
                         "token_count": count_tokens(child_text)
                     })

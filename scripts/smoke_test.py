@@ -189,7 +189,7 @@ def main() -> int:
 
     print("=" * 60)
     if all_passed:
-        print("ALL CHECKS PASSED — ready for Task 0.2 (ingest_one.py)")
+        print("ALL CHECKS PASSED — ready for Task 0.2 (make ingest)")
         return 0
     print("SOME CHECKS FAILED — fix .env / network before Phase 1")
     return 1

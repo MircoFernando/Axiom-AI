@@ -9,7 +9,7 @@ Handles:
 - Auto-ingest KB if collection is missing or empty
 
 Two collections:
-    ``nawaloka``   — RAG knowledge-base chunks (persistent)
+    ``axiom_kb``   — RAG knowledge-base chunks (persistent, tenant-scoped)
     ``cag_cache``  — CAG semantic cache (query → answer, TTL-filtered)
 
 Memory vectors (facts, episodes) stay in Supabase pgvector.
@@ -27,6 +27,7 @@ from qdrant_client.http.models import (
     Filter,
     FieldCondition,
     MatchValue,
+    Condition,
 )
 
 from infrastructure.config import (
@@ -34,6 +35,7 @@ from infrastructure.config import (
     QDRANT_URL,
     QDRANT_COLLECTION_NAME,
     EMBEDDING_DIM,
+    DEFAULT_TENANT_ID,
 )
 # ---------------------------------------------------------------------------
 # Singleton client
@@ -184,10 +186,11 @@ def upsert_chunks(
                 "title": chunk.get("title", ""),
                 "strategy": chunk.get("strategy", "unknown"),
                 "chunk_index": chunk.get("chunk_index", 0),
+                "tenant_id": chunk.get("tenant_id", DEFAULT_TENANT_ID),
             }
             # Include any extra metadata
             for k, v in chunk.items():
-                if k not in ("text", "url", "title", "strategy", "chunk_index"):
+                if k not in ("text", "url", "title", "strategy", "chunk_index", "tenant_id"):
                     payload[k] = v
 
             points.append(PointStruct(id=point_id, vector=vec, payload=payload))
@@ -211,6 +214,7 @@ def search_chunks(
     score_threshold: float = 0.0,
     collection_name: str = QDRANT_COLLECTION_NAME,
     strategy_filter: Optional[str] = None,
+    tenant_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Semantic search over the RAG knowledge base.
@@ -221,23 +225,30 @@ def search_chunks(
         score_threshold: Minimum cosine similarity (0–1).
         collection_name: Collection to search.
         strategy_filter: Optional — restrict to a chunking strategy.
+        tenant_id: Mandatory tenant scope (defaults to DEFAULT_TENANT_ID).
 
     Returns:
         List of dicts with keys:
-            chunk_text, url, title, strategy, chunk_index, score
+            chunk_text, url, title, strategy, chunk_index, tenant_id, score
     """
     client = get_qdrant_client()
+    tenant_id = tenant_id or DEFAULT_TENANT_ID
 
-    query_filter = None
-    if strategy_filter:
-        query_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="strategy",
-                    match=MatchValue(value=strategy_filter),
-                )
-            ]
+    must_conditions: List[Condition] = [
+        FieldCondition(
+            key="tenant_id",
+            match=MatchValue(value=tenant_id),
         )
+    ]
+    if strategy_filter:
+        must_conditions.append(
+            FieldCondition(
+                key="strategy",
+                match=MatchValue(value=strategy_filter),
+            )
+        )
+
+    query_filter = Filter(must=must_conditions)
 
     response = client.query_points(
         collection_name=collection_name,
@@ -256,6 +267,7 @@ def search_chunks(
             "title": payload.get("title", ""),
             "strategy": payload.get("strategy", "unknown"),
             "chunk_index": payload.get("chunk_index", 0),
+            "tenant_id": payload.get("tenant_id", tenant_id),
             "score": hit.score,
         }
         # Parent-child: include parent text for richer LLM context

@@ -14,7 +14,7 @@ import argparse
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 from services.ingest_service.pipeline import STRATEGY_MAP, LOADER_MAP, run_ingest
 

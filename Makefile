@@ -25,4 +25,4 @@ smoke:
 	PYTHONPATH=src .venv/bin/python scripts/smoke_test.py
 
 ingest:
-	PYTHONPATH=src .venv/bin/python scripts/ingest_one.py
+	PYTHONPATH=src .venv/bin/python scripts/ingest_to_qdrant.py --source kb --strategy parent_child

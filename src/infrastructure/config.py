@@ -287,6 +287,7 @@ MEM_COLLECTION = "mem_vectors"
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
 QDRANT_URL = os.getenv("QDRANT_URL", None)
 QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "axiom_kb")
+DEFAULT_TENANT_ID = os.getenv("DEFAULT_TENANT_ID", "dev-tenant-001")
 
 # ========================================
 # FAQ Loading (optional)
