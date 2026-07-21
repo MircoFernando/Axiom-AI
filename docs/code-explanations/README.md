@@ -31,7 +31,7 @@ After each new explanation, the agent should:
 | `src/infrastructure/log.py` | — | Pending |
 | `src/infrastructure/models.py` | — | Pending |
 | `src/infrastructure/utils.py` | — | Pending |
-| `src/infrastructure/observability.py` | — | Pending |
+| `src/infrastructure/observability.py` | [observability.py.md](src/infrastructure/observability.py.md) | Done |
 
 ## Conventions
 

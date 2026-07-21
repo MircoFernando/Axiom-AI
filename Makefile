@@ -1,22 +1,28 @@
-.PHONY: install lint format test run seed demo
+.PHONY: install lint format test run seed demo smoke ingest
 
 install:
-uv pip install -r requirements.txt
+	uv pip install -r requirements.txt
 
 lint:
-ruff check src/ tests/
+	ruff check src/ tests/
 
 format:
-ruff format src/ tests/
+	ruff format src/ tests/
 
 test:
-pytest tests/ -v
+	pytest tests/ -v
 
 run:
-uvicorn src.api.main:app --reload --port 8000
+	uvicorn src.api.main:app --reload --port 8000
 
 seed:
-python scripts/seed_data.py
+	python scripts/seed_data.py
 
 demo:
-docker compose up --build
+	docker compose up --build
+
+smoke:
+	PYTHONPATH=src .venv/bin/python scripts/smoke_test.py
+
+ingest:
+	PYTHONPATH=src .venv/bin/python scripts/ingest_one.py

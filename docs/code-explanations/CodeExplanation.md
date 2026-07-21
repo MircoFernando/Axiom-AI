@@ -14,7 +14,8 @@
 3. [`embeddings.py`](#srcinfrastructurellmembeddingspy)
 4. [`llm_provider.py`](#srcinfrastructurellmllm_providerpy)
 5. [LLM Provider — deep dives (FAQ)](#llm-provider--deep-dives-faq)
-6. [Index of pending files](#index-of-pending-files)
+6. [`observability.py`](#srcinfrastructureobservabilitypy)
+7. [Index of pending files](#index-of-pending-files)
 
 ---
 
@@ -344,6 +345,70 @@ get_chat_llm() does NOT decide finance vs admissions — that's get_router_llm()
 
 ---
 
+## `src/infrastructure/observability.py`
+
+> Full per-file copy: [`src/infrastructure/observability.py.md`](src/infrastructure/observability.py.md)
+
+### What this file is for
+
+**Observability** answers: *“What happened when this student sent that message, and why did the bot reply that way?”*
+
+Wraps **LangFuse** for traces, spans, LLM generations (tokens/cost), and optional remote prompt management. Business code imports this module — not LangFuse directly.
+
+**Phase 0–4:** exists but you don’t wire it yet. **Phase 5:** add `@observe`, tag `tenant_id`, call `flush()` on shutdown.
+
+### Configuration
+
+| Toggle | Where | Effect |
+|---|---|---|
+| Tracing on/off | `param.yaml` → `observability.enabled` | `false` → `@observe` is no-op |
+| LangFuse keys | `.env` → `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY` | Missing → client `None`, app still runs |
+| Prompt source | `.env` → `LANGFUSE_PROMPTS=true` | Opt-in remote prompts; default = local files |
+
+Tracing and prompt management are **independent toggles**.
+
+### Main API
+
+| Function | Purpose |
+|---|---|
+| `get_langfuse()` | Singleton LangFuse client; `None` if disabled |
+| `fetch_prompt(name, fallback=..., **vars)` | LangFuse prompt or local `str.format()` fallback |
+| `prefetch_prompts(names)` | Warm prompt cache at API startup |
+| `@observe(name=..., as_type=...)` | Trace a function as span or generation |
+| `update_current_trace(...)` | Tag trace with student phone, session, tenant |
+| `update_current_observation(...)` | Attach I/O, model, token usage to current step |
+| `flush()` | Send batched events before process exit |
+
+### Trace example (Axiom)
+
+```
+Trace: whatsapp-msg-abc123
+  user_id: +94771234567
+  metadata: {tenant_id: "..."}
+  ├─ span: guardrail → pass
+  ├─ span: semantic_cache → miss
+  ├─ generation: router_llm → {"route":"finance"}
+  ├─ span: finance_agent
+  └─ generation: chat_llm → "Payment confirmed..."
+```
+
+### Design principles
+
+1. **Never crash the app** — missing keys, import errors, LangFuse down → no-op
+2. **Local prompts by default** — code changes apply immediately in dev
+3. **Separate span vs generation** — generations track LLM cost; spans track everything else
+4. **Complements `log.py`** — logs for dev lines; LangFuse for request trees and billing
+
+### Self-check
+
+1. Crash without keys? → No
+2. Disable tracing? → `observability.enabled: false`
+3. Default prompt source? → Local Python files
+4. `flush()` when? → API/worker shutdown
+5. Wire in which phase? → Phase 5
+
+---
+
 ## Index of pending files
 
 | Source file | Status |
@@ -352,10 +417,9 @@ get_chat_llm() does NOT decide finance vs admissions — that's get_router_llm()
 | `src/infrastructure/log.py` | Pending |
 | `src/infrastructure/models.py` | Pending |
 | `src/infrastructure/utils.py` | Pending |
-| `src/infrastructure/observability.py` | Pending |
 | `src/infrastructure/db/*` | Pending (not built) |
 
 ---
 
-*Document version: 1.0 — July 2026*  
-*Covers: embeddings.py, llm_provider.py, LLM Provider FAQ*
+*Document version: 1.1 — July 2026*  
+*Covers: embeddings.py, llm_provider.py, LLM Provider FAQ, observability.py*

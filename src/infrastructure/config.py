@@ -41,14 +41,20 @@ def _load_yaml(filename: str) -> Dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def _get_nested(d: Dict, *keys, default=None):
+def _get_nested(d: Dict[str, Any], *keys: str, default: Any = None) -> Any:
     """Get nested dictionary value safely."""
+    current: Any = d
     for key in keys:
-        if isinstance(d, dict):
-            d = d.get(key, default)
-        else:
+        if not isinstance(current, dict):
             return default
-    return d if d is not None else default
+        current = current.get(key, default)
+    return default if current is None else current
+
+
+def _get_str(d: Dict[str, Any], *keys: str, default: str) -> str:
+    """Like _get_nested but always returns a string."""
+    value = _get_nested(d, *keys, default=default)
+    return value if isinstance(value, str) else default
 
 
 # Load configs
@@ -59,10 +65,11 @@ _MODELS = _load_yaml("models.yaml")
 # Provider Configuration
 # ========================================
 
-PROVIDER = _get_nested(_PARAMS, "provider", "default", default="openrouter")
-MODEL_TIER = _get_nested(_PARAMS, "provider", "tier", default="general")
-OPENROUTER_BASE_URL = _get_nested(_PARAMS, "provider", "openrouter_base_url",
-                                   default="https://openrouter.ai/api/v1")
+PROVIDER = _get_str(_PARAMS, "provider", "default", default="openrouter")
+MODEL_TIER = _get_str(_PARAMS, "provider", "tier", default="general")
+OPENROUTER_BASE_URL = _get_str(
+    _PARAMS, "provider", "openrouter_base_url", default="https://openrouter.ai/api/v1"
+)
 
 # ========================================
 # Model Names (from models.yaml)
@@ -79,10 +86,10 @@ def get_chat_model(provider: Optional[str] = None, tier: Optional[str] = None) -
     elif provider == "gemini":
         provider = "google"  # Alias
 
-    return _get_nested(_MODELS, provider, "chat", tier, default="openai/gpt-4o-mini")
+    return _get_str(_MODELS, provider, "chat", tier, default="openai/gpt-4o-mini")
 
 
-EMBEDDING_TIER = _get_nested(_PARAMS, "embedding", "tier", default="default")
+EMBEDDING_TIER = _get_str(_PARAMS, "embedding", "tier", default="default")
 
 
 def get_embedding_model(provider: Optional[str] = None, tier: Optional[str] = None) -> str:
@@ -94,7 +101,7 @@ def get_embedding_model(provider: Optional[str] = None, tier: Optional[str] = No
     if provider == "google" or provider == "gemini":
         provider = "google"
 
-    return _get_nested(_MODELS, provider, "embedding", tier, default="openai/text-embedding-3-small")
+    return _get_str(_MODELS, provider, "embedding", tier, default="openai/text-embedding-3-small")
 
 
 # ========================================
@@ -173,12 +180,14 @@ EMBEDDING_SHOW_PROGRESS = _get_nested(_PARAMS, "embedding", "show_progress", def
 # Project Paths (from param.yaml)
 # ========================================
 
-DATA_DIR = _PROJECT_ROOT / _get_nested(_PARAMS, "paths", "data_dir", default="data")
-KB_DIR = _PROJECT_ROOT / _get_nested(_PARAMS, "paths", "kb_dir", default="data/knowledge_base")
+DATA_DIR = _PROJECT_ROOT / _get_str(_PARAMS, "paths", "data_dir", default="data")
+KB_DIR = _PROJECT_ROOT / _get_str(_PARAMS, "paths", "kb_dir", default="data/knowledge_base")
 
 # Alternative ingestion sources (used by pipeline.py loader map)
 JSONL_DIR = DATA_DIR / "jsonl"
-MARKDOWN_DIR = _PROJECT_ROOT / _get_nested(_PARAMS, "paths", "markdown_dir", default="data/nawaloka_markdown")
+MARKDOWN_DIR = _PROJECT_ROOT / _get_str(
+    _PARAMS, "paths", "markdown_dir", default="data/knowledge_base"
+)
 
 # NOTE: Both RAG KB and CAG cache live in Qdrant Cloud (separate collections).
 # NOTE: ST memory lives in Supabase (st_turns table).
@@ -277,7 +286,7 @@ MEM_COLLECTION = "mem_vectors"
 
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
 QDRANT_URL = os.getenv("QDRANT_URL", None)
-QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "nawaloka")
+QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "axiom_kb")
 
 # ========================================
 # FAQ Loading (optional)
@@ -312,7 +321,7 @@ KNOWN_FAQS = load_faqs()
 
 def get_api_key(provider: Optional[str] = None) -> Optional[str]:
     """Get API key for the specified provider."""
-    provider = provider or PROVIDER
+    provider_name = provider or PROVIDER
     key_map = {
         "openrouter": "OPENROUTER_API_KEY",
         "openai": "OPENAI_API_KEY",
@@ -323,7 +332,7 @@ def get_api_key(provider: Optional[str] = None) -> Optional[str]:
         "deepseek": "DEEPSEEK_API_KEY",
         "tavily": "TAVILY_API_KEY",
     }
-    env_var = key_map.get(provider, f"{provider.upper()}_API_KEY")
+    env_var = key_map.get(provider_name, f"{provider_name.upper()}_API_KEY")
     return os.getenv(env_var)
 
 
