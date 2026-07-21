@@ -290,6 +290,13 @@ QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", "axiom_kb")
 DEFAULT_TENANT_ID = os.getenv("DEFAULT_TENANT_ID", "dev-tenant-001")
 
 # ========================================
+# Redis / Message Queue (Phase 1)
+# ========================================
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+MESSAGE_QUEUE_KEY = os.getenv("MESSAGE_QUEUE_KEY", "axiom:inbound_messages")
+
+# ========================================
 # FAQ Loading (optional)
 # ========================================
 

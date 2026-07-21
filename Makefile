@@ -1,4 +1,4 @@
-.PHONY: install lint format test run seed demo smoke ingest
+.PHONY: install lint format test run seed demo smoke ingest redis test-redis
 
 install:
 	uv pip install -r requirements.txt
@@ -10,10 +10,16 @@ format:
 	ruff format src/ tests/
 
 test:
-	pytest tests/ -v
+	PYTHONPATH=src pytest tests/ -v
 
 run:
 	uvicorn src.api.main:app --reload --port 8000
+
+redis:
+	docker compose up -d redis
+
+test-redis:
+	PYTHONPATH=src .venv/bin/python scripts/test_redis.py
 
 seed:
 	python scripts/seed_data.py
