@@ -47,7 +47,6 @@ env/
 .env.*.local
 
 # Data and Model Files
-data/
 *.pkl
 *.h5
 *.pt
