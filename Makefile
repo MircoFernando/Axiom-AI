@@ -1,4 +1,4 @@
-.PHONY: install lint format test run seed demo smoke ingest redis test-redis
+.PHONY: install lint format test run seed demo smoke ingest redis test-redis test-queue
 
 install:
 	uv pip install -r requirements.txt
@@ -20,6 +20,9 @@ redis:
 
 test-redis:
 	PYTHONPATH=src .venv/bin/python scripts/test_redis.py
+
+test-queue:
+	PYTHONPATH=src .venv/bin/python scripts/test_queue.py
 
 seed:
 	python scripts/seed_data.py

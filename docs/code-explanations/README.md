@@ -32,6 +32,9 @@ After each new explanation, the agent should:
 | `src/infrastructure/models.py` | — | Pending |
 | `src/infrastructure/utils.py` | — | Pending |
 | `src/infrastructure/observability.py` | [observability.py.md](src/infrastructure/observability.py.md) | Done |
+| Phase 1 — Redis & message queue | [phase1-redis-message-queue.md](phase1-redis-message-queue.md) | Done |
+| `src/services/messaging/schemas.py` | (see phase1-redis doc) | Done |
+| `src/services/messaging/queue.py` | (see phase1-redis doc) | Done |
 
 ## Conventions
 

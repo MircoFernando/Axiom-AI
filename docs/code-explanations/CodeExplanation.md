@@ -15,7 +15,8 @@
 4. [`llm_provider.py`](#srcinfrastructurellmllm_providerpy)
 5. [LLM Provider — deep dives (FAQ)](#llm-provider--deep-dives-faq)
 6. [`observability.py`](#srcinfrastructureobservabilitypy)
-7. [Index of pending files](#index-of-pending-files)
+7. [Phase 1 — Redis & message queue](#phase-1--redis--message-queue)
+8. [Index of pending files](#index-of-pending-files)
 
 ---
 
@@ -409,6 +410,57 @@ Trace: whatsapp-msg-abc123
 
 ---
 
+## Phase 1 — Redis & message queue
+
+**Full doc:** [`phase1-redis-message-queue.md`](phase1-redis-message-queue.md)
+
+### What & why
+
+Meta WhatsApp requires **200 OK within ~3 seconds**. The webhook must **enqueue** and return — not run LLM/RAG. Redis sits between FastAPI (producer) and the worker (consumer).
+
+### Architecture (Steps 1–2 done)
+
+```text
+docker-compose.yml → Redis :6379
+config.py           → REDIS_URL, MESSAGE_QUEUE_KEY
+schemas.py          → IdentityContext, InboundMessageJob
+queue.py            → enqueue_message (RPUSH), dequeue_message (BLPOP)
+```
+
+### Data contract (`InboundMessageJob`)
+
+Every queued message carries **`identity.tenant_id`** and **`identity.class_ids`** for Phase 2 RAG — not read from `.env` in production.
+
+### Verify locally
+
+```bash
+make redis && make test-redis && make test-queue
+```
+
+### Celery — later
+
+Raw Redis LIST for Phase 1–2 (learn the pipeline). **Celery** planned Phase 5–6 for PDF ingest, OCR, retries, cron — same `InboundMessageJob` schema, different transport.
+
+### Redis vs BackgroundTasks
+
+| | BackgroundTasks | Redis + workers |
+|---|-----------------|-----------------|
+| Meta 200 | ✅ | ✅ |
+| Scalable SaaS | ❌ | ✅ |
+| Instant ack | ✅ (same process) | ✅ (first worker step) |
+
+**Full comparison:** [`phase1-redis-message-queue.md`](phase1-redis-message-queue.md) — sections *Mental model* and *Redis vs FastAPI BackgroundTasks*.
+
+### Self-check
+
+1. Webhook command? → RPUSH via `enqueue_message`
+2. Worker command? → BLPOP via `dequeue_message`
+3. Celery now? → No
+4. BackgroundTasks for production SaaS? → No — finish Redis path
+5. Scale how? → More **worker** processes, not more queues per tenant
+
+---
+
 ## Index of pending files
 
 | Source file | Status |
@@ -421,5 +473,5 @@ Trace: whatsapp-msg-abc123
 
 ---
 
-*Document version: 1.1 — July 2026*  
-*Covers: embeddings.py, llm_provider.py, LLM Provider FAQ, observability.py*
+*Document version: 1.2 — July 2026*  
+*Covers: embeddings.py, llm_provider.py, LLM Provider FAQ, observability.py, Phase 1 Redis message queue*
